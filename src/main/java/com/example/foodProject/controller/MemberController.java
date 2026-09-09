@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -16,9 +19,10 @@ public class MemberController {
     private final MemberService memberService;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignUpRequest request) {
+    public ResponseEntity<Map<String, String>> signup(@RequestBody SignUpRequest request) {
         memberService.signUp(request);
-        return ResponseEntity.ok("회원가입이 완료되었습니다.");
+        // Map을 사용하여 JSON 포맷으로 반환
+        return ResponseEntity.ok(Collections.singletonMap("message", "회원가입이 완료되었습니다."));
     }
 
     @PostMapping("/login")
@@ -28,12 +32,12 @@ public class MemberController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(
+    public ResponseEntity<Map<String, String>> logout(
             @RequestHeader("Authorization") String accessToken,
             @RequestParam String email) {
         String resolvedToken = accessToken.substring(7);
 
         memberService.logout(resolvedToken, email);
-        return ResponseEntity.ok("로그아웃 되었습니다.");
+        return ResponseEntity.ok(Collections.singletonMap("message", "로그아웃 되었습니다."));
     }
 }

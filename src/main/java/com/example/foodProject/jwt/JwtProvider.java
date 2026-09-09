@@ -3,22 +3,14 @@ package com.example.foodProject.jwt;
 import com.example.foodProject.dto.login.Role;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.JwtException;
 
 import java.security.Key;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.Date;
 
 @Component
@@ -82,39 +74,24 @@ public class JwtProvider {
         return (expiration.getTime() - now);
     }
 
-    // 이메일 추출
-    public String getEmail(String token){
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
-    }
-
-    // 토큰 유효성 검증
-    public boolean validateToken(String token){
+    // 토큰 유효성 및 만료 여부 검증
+    public boolean validateToken(String token) {
         try{
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
-        }catch (JwtException | IllegalArgumentException e){
+        }catch(Exception e){
             return false;
         }
     }
+    // 토큰에서 Email(Subject) 추출
+    public String getEmail(String token) {
+        return Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody().getSubject();
+    }
 
-    public Authentication getAuthentication(String token){
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        String role = claims.get("role", String.class);
-
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
-
-        UserDetails principal = new User(claims.getSubject(),"", Collections.singleton(authority));
-
-        return new UsernamePasswordAuthenticationToken(principal, token, Collections.singleton(authority));
+    // 토큰에서 Role 추출
+    public String getRole(String token) {
+        return (String) Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody().get("role");
     }
 }
