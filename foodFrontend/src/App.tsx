@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import FilterSidebar from './components/FilterSidebar';
@@ -8,6 +8,7 @@ import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 import CartPage, { CartItem } from './pages/CartPage';
 import { Food, mockFoods } from './data/mockFoods';
+import axios from 'axios';
 
 type Page = 'main' | 'cart';
 type SortOption = 'default' | 'calories-asc' | 'protein-desc' | 'sugar-asc';
@@ -15,6 +16,38 @@ type SortOption = 'default' | 'calories-asc' | 'protein-desc' | 'sugar-asc';
 type AuthModalMode = 'login' | 'signup' | null;
 
 export default function App() {
+
+  const [foods, setFoods] = useState<Food[]>([]); // 진짜 DB 데이터를 담을 바구니
+
+  useEffect(() => {
+    // 앱이 켜지자마자 스프링 부트에 데이터 요청!
+    axios.get('http://localhost:8080/api/foods')
+        .then(response => {
+          console.log("통신 성공 데이터:", response.data);
+
+          // 프론트엔드 이름(name, brand 등)에 맞게 백엔드 데이터(foodName, manufacturer 등) 짝맞추기
+          const realData = response.data.map((item: any) => ({
+            id: item.foodId,
+            name: item.foodName,
+            brand: item.manufacturer,
+            category: item.majorCategoryCode,
+            calories: item.calories,
+            protein: item.protein || 0,
+            sugar: item.sugar || 0,
+            carbs: item.carbohydrate || 0,
+            fat: item.fat || 0,
+            servingSize: item.servingSize,
+            imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format', // 임시 이미지
+            price: 0
+          }));
+
+          setFoods(realData); // 짝맞춘 진짜 데이터를 바구니에 쏙!
+        })
+        .catch(error => {
+          console.error("통신 에러 발생:", error);
+        });
+  }, []);
+
   // ── Auth ─────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModal, setAuthModal] = useState<AuthModalMode>(null);
@@ -40,18 +73,7 @@ export default function App() {
 
   // ── Wishlist & Cart ─────────────────────────────────────────────────────────
   const [wishlist, setWishlist] = useState<Set<number>>(() => new Set([3, 4, 13]));
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const initial: { id: number; qty: number }[] = [
-      { id: 1, qty: 2 },
-      { id: 7, qty: 1 },
-    ];
-    return initial
-      .map(({ id, qty }) => {
-        const food = mockFoods.find((f) => f.id === id);
-        return food ? { food, quantity: qty } : null;
-      })
-      .filter(Boolean) as CartItem[];
-  });
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleSearch = (term: string) => {
@@ -149,7 +171,7 @@ export default function App() {
   const cartFoodIds = useMemo(() => new Set(cartItems.map((i) => i.food.id)), [cartItems]);
 
   const filteredAndSortedFoods = useMemo(() => {
-    const filtered = mockFoods.filter((food) => {
+    const filtered = foods.filter((food) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         if (
