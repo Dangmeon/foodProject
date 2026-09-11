@@ -1,0 +1,10 @@
+{
+  "description": "Discover and compare personalized food nutrition information with AI recommendations, tailored for health-conscious users seeking optimal dietary choices.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

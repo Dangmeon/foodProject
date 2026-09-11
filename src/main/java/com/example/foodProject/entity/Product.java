@@ -31,6 +31,9 @@ public class Product {
     @Column(name = "minor_category_code")
     private String minorCategoryCode; // 식품소분류코드
 
+    @Column(name = "one_byte")
+    private String oneByte;
+
     @Column(name = "serving_size")
     private String servingSize;
 

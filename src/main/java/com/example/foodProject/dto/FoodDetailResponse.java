@@ -15,6 +15,7 @@ public record FoodDetailResponse(
         String servingSize,
         String totalWeight, // 중량 추가
         String origin,      // 원산지 추가
+        String oneByte,
 
         // 영양 성분 전체
         Double calories,
@@ -46,7 +47,7 @@ public record FoodDetailResponse(
                 foodItem.getServingSize(),
                 foodItem.getTotalWeight(),
                 foodItem.getOrigin(),
-
+                foodItem.getOneByte(),
                 foodItem.getCalories(),
                 foodItem.getCarbohydrate(),
                 foodItem.getProtein(),
