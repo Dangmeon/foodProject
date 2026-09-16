@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
+import axios from 'axios';
 
 type AuthMode = 'login' | 'signup';
 
@@ -51,7 +52,6 @@ function InputField({
 }
 
 export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode }: AuthModalProps) {
-  const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,10 +78,57 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
     setTimeout(() => firstInputRef.current?.focus(), 50);
   }, [mode]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const displayName = mode === 'signup' ? (name || '사용자') : '김영희';
-    onLoginSuccess(displayName);
+
+    if(mode === 'signup') {
+      if (password != confirm){
+        alert('비밀번호가 일치하지 않습니다.');
+        return;
+      }
+      if(!agreeTerms){
+        alert('이용약관에 동의해주세요.');
+        return;
+      }
+
+      try{
+        const response = await axios.post('http://localhost:8080/api/auth/signup', {
+          email: email,
+          password: password,
+          nickname: nickname,
+        });
+
+        alert(response.data.message);
+        onSwitchMode('login');
+
+      }catch(err){
+        console.error('회원가입 오류 : ' + err);
+        alert('회원가입에 실패했습니다.');
+      }
+    }else{
+      try {
+        const response = await axios.post('http://localhost:8080/api/auth/login', {
+          email: email,
+          password: password,
+        });
+
+        const token = response.data.accessToken;
+        // 환영 메시지에 띄울 이름 (백엔드에서 이름을 주면 그걸 쓰고, 없으면 이메일 앞자리 사용)
+        const userName = response.data.name || email.split('@')[0];
+
+        if (token) {
+          localStorage.setItem('accessToken', token); // 브라우저 창고(localStorage)에 보관
+          localStorage.setItem('nickname', userName);
+          localStorage.setItem('userEmail', email);
+        }
+
+
+        onLoginSuccess(userName); // 모달 창 닫고 로그인 상태로 변경
+      }catch (error){
+        console.error('로그인 에러 : ' + error);
+        alert('이메일이나 비밀번호가 맞지 않습니다.');
+      }
+    }
   };
 
   const eyeIcon = (
@@ -184,35 +231,15 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
               <>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label htmlFor="signup-name" className="block text-sm font-medium text-[#17221B] mb-1.5">이름</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9DB3A3]">{userIcon}</span>
-                      <input
-                        ref={firstInputRef as React.RefObject<HTMLInputElement>}
-                        id="signup-name"
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="홍길동"
-                        autoComplete="name"
-                        required
-                        className="w-full h-11 pl-10 pr-4 rounded-xl border-2 border-[#D8E8DC] bg-white text-sm text-[#17221B] placeholder-[#B8C9BE] outline-none transition-all duration-150 focus:border-[#2A7A4B] focus:shadow-[0_0_0_3px_rgba(42,122,75,0.1)]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1">
                     <label htmlFor="signup-nickname" className="block text-sm font-medium text-[#17221B] mb-1.5">닉네임</label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9DB3A3]">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                          <path d="M7 7l10 10M17 7 7 17" strokeLinecap="round" />
-                          <circle cx="12" cy="12" r="9" />
-                        </svg>
+                          {userIcon}
                       </span>
                       <input
-                        id="signup-nickname"
-                        type="text"
-                        value={nickname}
+                          id="signup-nickname"
+                          type="text"
+                          value={nickname}
                         onChange={(e) => setNickname(e.target.value)}
                         placeholder="나의닉네임"
                         autoComplete="nickname"

@@ -10,7 +10,7 @@ interface NavbarProps {
   onLogin: () => void;
   onSignup: () => void;
   onLogout: () => void;
-  userName?: string;
+  nickname?: string;
   userEmail?: string;
 }
 
@@ -34,7 +34,7 @@ export default function Navbar({
   onLogin,
   onSignup,
   onLogout,
-  userName = '사용자',
+  nickname = '사용자',
   userEmail = '',
 }: NavbarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -137,9 +137,9 @@ export default function Navbar({
                   aria-haspopup="menu"
                   aria-label="프로필 메뉴 열기"
                 >
-                  <Avatar name={userName} />
+                  <Avatar name={nickname} />
                   <span className="hidden sm:block text-sm font-medium text-[#17221B] group-hover:text-[#2A7A4B] transition-colors">
-                    {userName}
+                    {nickname}
                   </span>
                   <svg
                     viewBox="0 0 16 16"
@@ -162,9 +162,9 @@ export default function Navbar({
                   >
                     {/* User info */}
                     <div className="flex items-center gap-3 px-4 py-3">
-                      <Avatar name={userName} />
+                      <Avatar name={nickname} />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#17221B] truncate">{userName}</p>
+                        <p className="text-sm font-semibold text-[#17221B] truncate">{nickname}</p>
                         {userEmail && (
                           <p className="text-[11px] text-[#9DB3A3] truncate">{userEmail}</p>
                         )}

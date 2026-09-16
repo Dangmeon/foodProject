@@ -17,41 +17,11 @@ type AuthModalMode = 'login' | 'signup' | null;
 
 export default function App() {
 
-  const [foods, setFoods] = useState<Food[]>([]); // 진짜 DB 데이터를 담을 바구니
-
-  useEffect(() => {
-    // 앱이 켜지자마자 스프링 부트에 데이터 요청!
-    axios.get('http://localhost:8080/api/foods')
-        .then(response => {
-          console.log("통신 성공 데이터:", response.data);
-
-          // 프론트엔드 이름(name, brand 등)에 맞게 백엔드 데이터(foodName, manufacturer 등) 짝맞추기
-          const realData = response.data.map((item: any) => ({
-            id: item.foodId,
-            name: item.foodName,
-            brand: item.manufacturer,
-            category: item.majorCategoryCode,
-            calories: item.calories,
-            protein: item.protein || 0,
-            sugar: item.sugar || 0,
-            carbs: item.carbohydrate || 0,
-            fat: item.fat || 0,
-            servingSize: item.servingSize,
-            imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format', // 임시 이미지
-            price: 0
-          }));
-
-          setFoods(realData); // 짝맞춘 진짜 데이터를 바구니에 쏙!
-        })
-        .catch(error => {
-          console.error("통신 에러 발생:", error);
-        });
-  }, []);
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModal, setAuthModal] = useState<AuthModalMode>(null);
-  const [userName, setUserName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [userEmail, setUserEmail] = useState('');
 
   // ── Navigation ──────────────────────────────────────────────────────────────
@@ -74,6 +44,49 @@ export default function App() {
   // ── Wishlist & Cart ─────────────────────────────────────────────────────────
   const [wishlist, setWishlist] = useState<Set<number>>(() => new Set([3, 4, 13]));
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+
+  const [foods, setFoods] = useState<Food[]>([]); // 진짜 DB 데이터를 담을 바구니
+
+  useEffect(() => {
+    axios.get('http://localhost:8080/api/foods')
+        .then(response => {
+          console.log("백엔드 원본 데이터:", response.data);
+
+          const realData = response.data.map((item: any) => ({
+            id: item.foodId,
+            name: item.foodName,
+            brand: item.manufacturer || '제조사 모름',
+            category: item.majorCategoryCode || '기타',
+            calories: item.calories || 0,
+            protein: item.protein || 0,
+            sugar: item.sugar || 0,
+            carbs: item.carbohydrate || 0,
+            fat: item.fat || 0,
+            servingSize: item.servingSize || '1회 제공량',
+            imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format',
+            price: 0
+          }));
+
+          console.log("리액트용으로 번역된 데이터:", realData);
+          setFoods(realData); // 번역된 진짜 데이터를 바구니에 쏙!
+        })
+        .catch(error => {
+          console.error("통신 에러 발생:", error);
+        });
+  }, []);
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem('accessToken');
+    const savedName = localStorage.getItem('nickname');
+    const savedEmail = localStorage.getItem('userEmail');
+
+    if(savedToken && savedName){
+      setIsLoggedIn(true);
+      setNickname(savedName);
+      setUserEmail(savedEmail || '');
+    }
+  }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleSearch = (term: string) => {
@@ -208,8 +221,16 @@ export default function App() {
         isLoggedIn={isLoggedIn}
         onLogin={() => setAuthModal('login')}
         onSignup={() => setAuthModal('signup')}
-        onLogout={() => { setIsLoggedIn(false); setUserName(''); setUserEmail(''); }}
-        userName={userName}
+        onLogout={() => {
+          setIsLoggedIn(false);
+          setNickname('');
+          setUserEmail('');
+
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('nickname');
+          localStorage.removeItem('userEmail');
+        }}
+        nickname={nickname}
         userEmail={userEmail}
       />
 
@@ -218,7 +239,7 @@ export default function App() {
           mode={authModal}
           onClose={() => setAuthModal(null)}
           onLoginSuccess={(name) => {
-            setUserName(name);
+            setNickname(name);
             setUserEmail(`${name.toLowerCase()}@nutripick.kr`);
             setIsLoggedIn(true);
             setAuthModal(null);
