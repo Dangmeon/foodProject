@@ -123,7 +123,7 @@ export default function HeroSection({
 
               <input
                 ref={inputRef}
-                type="search"
+                type="text"
                 placeholder="제품명, 브랜드명으로 검색하세요..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}

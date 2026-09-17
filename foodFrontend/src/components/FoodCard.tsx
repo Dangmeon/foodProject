@@ -138,7 +138,7 @@ export default function FoodCard({ food, isWishlisted, isInCart, onToggleWishlis
           {/* Price + Cart button */}
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold text-[#17221B] text-sm">
-              {food.price.toLocaleString()}
+              {(food.price || 0).toLocaleString()}
               <span className="text-xs font-normal text-[#566B5D] ml-0.5">원</span>
             </span>
             <button

@@ -29,10 +29,11 @@ export default function App() {
 
   // ── Search & Filters ────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState<string[]>([
-    '그릭 요거트',
-    '고단백 식품',
-  ]);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    const saved = localStorage.getItem('recentSearches');
+    return saved ? JSON.parse(saved) : []; // 저장된 게 있으면 쓰고, 없으면 빈 배열
+  });
+
   const [minProtein, setMinProtein] = useState(0);
   const [maxSugar, setMaxSugar] = useState(50);
   const [maxCalories, setMaxCalories] = useState(600);
@@ -65,7 +66,7 @@ export default function App() {
             fat: item.fat || 0,
             servingSize: item.servingSize || '1회 제공량',
             imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format',
-            price: 0
+            price: Math.floor(Math.random() * 51) * 500 + 5000
           }));
 
           console.log("리액트용으로 번역된 데이터:", realData);
@@ -89,10 +90,66 @@ export default function App() {
   }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleSearch = (term: string) => {
+  const handleSearch = async (term: string) => {
     setSearchQuery(term);
+
+    // 🌟 존재하지 않는 setSelectedCategory 대신, 만들어두신 필터 초기화 함수 사용!
+    handleResetFilters();
+
     if (term.trim()) {
+      // 최근 검색어 저장
       setRecentSearches((prev) => [term, ...prev.filter((t) => t !== term)].slice(0, 5));
+
+      try {
+        const response = await axios.get(`http://localhost:8080/api/foods/search?keyword=${term}`);
+
+        // 검색 결과도 반드시 처음처럼 번역기를 돌려줌
+        const formattedSearchData = response.data.map((item: any) => ({
+          id: item.foodId,
+          name: item.foodName,
+          brand: item.manufacturer || '제조사 모름',
+          category: item.majorCategoryCode || '기타',
+          calories: item.calories || 0,
+          protein: item.protein || 0,
+          sugar: item.sugar || 0,
+          carbs: item.carbohydrate || 0,
+          fat: item.fat || 0,
+          servingSize: item.servingSize || '1회 제공량',
+          imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format',
+          price: Math.floor(Math.random() * 51) * 500 + 5000
+        }));
+
+        setFoods(formattedSearchData); // 번역된 안전한 데이터
+
+      } catch (error) {
+        console.error("검색 데이터를 불러오는데 실패했습니다.", error);
+        alert("검색 중 오류가 발생했습니다.");
+      }
+    } else {
+      try {
+        const response = await axios.get(`http://localhost:8080/api/foods`);
+
+        // 빈칸 검색 시 전체 목록을 가져올 때도 번역기
+        const formattedAllData = response.data.map((item: any) => ({
+          id: item.foodId,
+          name: item.foodName,
+          brand: item.manufacturer || '제조사 모름',
+          category: item.majorCategoryCode || '기타',
+          calories: item.calories || 0,
+          protein: item.protein || 0,
+          sugar: item.sugar || 0,
+          carbs: item.carbohydrate || 0,
+          fat: item.fat || 0,
+          servingSize: item.servingSize || '1회 제공량',
+          imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=280&fit=crop&auto=format',
+          price: Math.floor(Math.random() * 51) * 500 + 5000
+        }));
+
+        setFoods(formattedAllData);
+
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
@@ -187,10 +244,15 @@ export default function App() {
     const filtered = foods.filter((food) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
+
+        const safeName = food.name || '';
+        const safeBrand = food.brand || '';
+        const safeCategory = food.category || '';
+
         if (
-          !food.name.toLowerCase().includes(q) &&
-          !food.brand.toLowerCase().includes(q) &&
-          !food.category.toLowerCase().includes(q)
+          !safeName.toLowerCase().includes(q) &&
+          !safeBrand.toLowerCase().includes(q) &&
+          !safeCategory.toLowerCase().includes(q)
         ) {
           return false;
         }

@@ -40,4 +40,16 @@ public class MemberController {
         memberService.logout(resolvedToken, email);
         return ResponseEntity.ok(Collections.singletonMap("message", "로그아웃 되었습니다."));
     }
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
+        boolean isDuplicate = memberService.checkEmailDuplicate(email);
+        return ResponseEntity.ok(isDuplicate);
+    }
+
+    @GetMapping("/check-nickname")
+    public ResponseEntity<Boolean> checkNickname(@RequestParam String nickname) {
+        boolean isDuplicate = memberService.checkNicknameDuplicate(nickname);
+        return ResponseEntity.ok(isDuplicate);
+    }
 }

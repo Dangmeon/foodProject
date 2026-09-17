@@ -59,7 +59,7 @@ public class MemberService {
                 7,
                 TimeUnit.DAYS);
 
-        return new LoginResponse(accessToken, refreshToken);
+        return new LoginResponse(accessToken, refreshToken, member.getNickname());
     }
 
     @Transactional
@@ -75,5 +75,13 @@ public class MemberService {
                 expiration,
                 TimeUnit.MILLISECONDS
         );
+    }
+
+    public boolean checkEmailDuplicate(String email) {
+        return memberRepository.existsByEmail(email);
+    }
+
+    public boolean checkNicknameDuplicate(String nickname) {
+        return memberRepository.existsByNickname(nickname);
     }
 }

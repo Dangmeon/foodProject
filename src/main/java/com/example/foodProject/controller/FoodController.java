@@ -1,6 +1,7 @@
 package com.example.foodProject.controller;
 
 import com.example.foodProject.entity.Product;
+import com.example.foodProject.repository.FoodRepository;
 import com.example.foodProject.service.FoodService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 public class FoodController {
 
     private final FoodService foodService;
+    private final FoodRepository foodRepository;
 
     @GetMapping
     public ResponseEntity<List<Product>> getAllFood() {
@@ -30,5 +32,11 @@ public class FoodController {
     @PostMapping
     public ResponseEntity<Product> createFood(@RequestBody Product product) {
         return ResponseEntity.ok(foodService.createFood(product));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> searchFood(String keyword) {
+        List<Product> searchResult = foodRepository.findByFoodNameContaining(keyword);
+        return ResponseEntity.ok(searchResult);
     }
 }

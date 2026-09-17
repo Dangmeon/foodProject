@@ -75,7 +75,7 @@ export default function FoodGrid({
           {foods.map((food) => (
             <div key={food.id} role="listitem" className="h-full">
               <FoodCard
-                food={food}
+                key={food.id} food={food}
                 isWishlisted={wishlist?.has(food.id) ?? false}
                 isInCart={cartFoodIds?.has(food.id) ?? false}
                 onToggleWishlist={onToggleWishlist}

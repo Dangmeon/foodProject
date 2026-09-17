@@ -61,6 +61,54 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
   const [agreeTerms, setAgreeTerms] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
+
+  // 중복 확인
+  const [isEmailChecked, setIsEmailChecked] = useState(false);
+  const [isNicknameChecked, setIsNicknameChecked] = useState(false);
+
+  // 메세지 박스 | 메시지 띄우는 함수 (3초 뒤 자동 사라짐)
+  const [toast, setToast] = useState<{message : string; type : 'success' | 'error'} | null>(null);
+  const showMessage = (message : string, type : 'success' | 'error') => {
+    setToast({message, type});
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  // 중복 확인 - 이메일
+  const handleCheckEmail = async () => {
+    if(!email) return showMessage('이메일을 입력해주세요', 'error');
+
+    try{
+      const response = await axios.get(`http://localhost:8080/api/auth/check-email?email=${email}`);
+      if(response.data){
+        showMessage('이미 사용 중인 이메일입니다.', 'error');
+        setIsEmailChecked(false);
+      }else{
+        showMessage('사용 가능한 이메일입니다.', 'success');
+        setIsEmailChecked(true);
+      }
+    }catch(err){
+      showMessage('중복 확인에 실패했습니다.', 'error');
+    }
+  }
+
+  const handleCheckNickname = async () => {
+    if(!nickname) return showMessage('닉네임을 입력해주세요', 'error');
+
+    try{
+      const response = await axios.get(`http://localhost:8080/api/auth/check-nickname?nickname=${nickname}`);
+      if(response.data){
+        showMessage('이미 사용 중인 닉네임입니다.', 'error');
+        setIsNicknameChecked(false);
+      }else{
+        showMessage('사용 가능한 닉네임입니다.', 'success');
+        setIsNicknameChecked(true);
+      }
+    }catch(err){
+      showMessage('중복 확인에 실패했습니다.', 'error');
+    }
+  }
+
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
@@ -81,14 +129,17 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    console.log("현재 상태 -> 이메일 합격:", isEmailChecked, "/ 닉네임 합격:", isNicknameChecked);
+
     if(mode === 'signup') {
+      if (!isEmailChecked || !isNicknameChecked) {
+        return showMessage('이메일과 닉네임 중복 확인을 해주세요.', 'error');
+      }
       if (password != confirm){
-        alert('비밀번호가 일치하지 않습니다.');
-        return;
+        return showMessage('비밀번호가 일치하지 않습니다.', 'error');
       }
       if(!agreeTerms){
-        alert('이용약관에 동의해주세요.');
-        return;
+        return showMessage('이용약관에 동의해주세요.', 'error');
       }
 
       try{
@@ -98,12 +149,12 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
           nickname: nickname,
         });
 
-        alert(response.data.message);
-        onSwitchMode('login');
+        showMessage('회원가입이 완료되었습니다. 로그인해주세요.', 'success');
+        setTimeout(() => onSwitchMode('login'), 1500);
 
       }catch(err){
         console.error('회원가입 오류 : ' + err);
-        alert('회원가입에 실패했습니다.');
+        showMessage('회원가입에 실패했습니다.', 'error');
       }
     }else{
       try {
@@ -122,11 +173,11 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
           localStorage.setItem('userEmail', email);
         }
 
-
-        onLoginSuccess(userName); // 모달 창 닫고 로그인 상태로 변경
+        showMessage(`${userName}님 환영합니다!`, 'success');
+        setTimeout(() => onLoginSuccess(userName), 1000); // 모달 창 닫고 로그인 상태로 변경
       }catch (error){
         console.error('로그인 에러 : ' + error);
-        alert('이메일이나 비밀번호가 맞지 않습니다.');
+        showMessage('이메일이나 비밀번호가 맞지 않습니다.', 'error');
       }
     }
   };
@@ -193,6 +244,14 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
         {/* Top accent bar */}
         <div className="h-1 bg-gradient-to-r from-[#2A7A4B] via-[#3D9960] to-[#F5762E]" />
 
+        {toast && (
+            <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-md z-50 transition-all text-sm font-medium ${
+                toast.type === 'success' ? 'bg-[#D8E8DC] text-[#2A7A4B]' : 'bg-[#FDE8E8] text-[#E02424]'
+            }`}>
+              {toast.message}
+            </div>
+        )}
+
         <div className="px-8 pt-7 pb-8">
           {/* Close button */}
           <button
@@ -227,46 +286,59 @@ export default function AuthModal({ mode, onClose, onLoginSuccess, onSwitchMode 
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* 닉네임 입력 (중복 확인 버튼 추가) */}
             {mode === 'signup' && (
-              <>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label htmlFor="signup-nickname" className="block text-sm font-medium text-[#17221B] mb-1.5">닉네임</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9DB3A3]">
-                          {userIcon}
-                      </span>
+                <div>
+                  <label className="block text-sm font-medium text-[#17221B] mb-1.5">닉네임</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
                       <input
-                          id="signup-nickname"
                           type="text"
                           value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
-                        placeholder="나의닉네임"
-                        autoComplete="nickname"
-                        required
-                        className="w-full h-11 pl-10 pr-4 rounded-xl border-2 border-[#D8E8DC] bg-white text-sm text-[#17221B] placeholder-[#B8C9BE] outline-none transition-all duration-150 focus:border-[#2A7A4B] focus:shadow-[0_0_0_3px_rgba(42,122,75,0.1)]"
+                          onChange={(e) => {
+                            setNickname(e.target.value);
+                            setIsNicknameChecked(false); // 글자 수정하면 중복확인 풀림
+                          }}
+                          placeholder="나의닉네임"
+                          className="w-full h-11 pl-4 pr-4 rounded-xl border-2 border-[#D8E8DC] outline-none focus:border-[#2A7A4B]"
                       />
                     </div>
+                    <button
+                        type="button"
+                        onClick={handleCheckNickname}
+                        className="px-4 h-11 bg-[#F4F8F5] text-[#2A7A4B] text-sm font-semibold rounded-xl border-2 border-[#D8E8DC] hover:bg-[#EAF2EC] transition-colors whitespace-nowrap"
+                    >
+                      중복확인
+                    </button>
                   </div>
                 </div>
-              </>
             )}
 
+            {/* 이메일 입력 (중복 확인 버튼 추가) */}
             <div>
-              <label htmlFor="auth-email" className="block text-sm font-medium text-[#17221B] mb-1.5">이메일</label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9DB3A3]">{emailIcon}</span>
-                <input
-                  ref={mode === 'login' ? (firstInputRef as React.RefObject<HTMLInputElement>) : undefined}
-                  id="auth-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="hello@nutripick.kr"
-                  autoComplete="email"
-                  required
-                  className="w-full h-11 pl-10 pr-4 rounded-xl border-2 border-[#D8E8DC] bg-white text-sm text-[#17221B] placeholder-[#B8C9BE] outline-none transition-all duration-150 focus:border-[#2A7A4B] focus:shadow-[0_0_0_3px_rgba(42,122,75,0.1)]"
-                />
+              <label className="block text-sm font-medium text-[#17221B] mb-1.5">이메일</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (mode === 'signup') setIsEmailChecked(false); // 가입 모드일 때만 풀림
+                      }}
+                      placeholder="hello@nutripick.kr"
+                      className="w-full h-11 pl-4 pr-4 rounded-xl border-2 border-[#D8E8DC] outline-none focus:border-[#2A7A4B]"
+                  />
+                </div>
+                {mode === 'signup' && (
+                    <button
+                        type="button"
+                        onClick={handleCheckEmail}
+                        className="px-4 h-11 bg-[#F4F8F5] text-[#2A7A4B] text-sm font-semibold rounded-xl border-2 border-[#D8E8DC] hover:bg-[#EAF2EC] transition-colors whitespace-nowrap"
+                    >
+                      중복확인
+                    </button>
+                )}
               </div>
             </div>
 
