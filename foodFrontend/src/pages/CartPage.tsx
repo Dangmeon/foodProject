@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Food, mockFoods } from '../data/mockFoods';
+import {useState} from 'react';
+import { Food } from '../data/mockFoods';
 
 export interface CartItem {
   food: Food;
@@ -9,14 +9,16 @@ export interface CartItem {
 interface CartPageProps {
   cartItems: CartItem[];
   wishlist: Set<number>;
+  foods: Food[];
+
   onUpdateQuantity: (foodId: number, quantity: number) => void;
   onRemoveFromCart: (foodId: number) => void;
   onToggleWishlist: (foodId: number) => void;
   onAddToCart: (food: Food) => void;
   onNavigateToMain: () => void;
 }
-
 type Tab = 'cart' | 'wishlist';
+
 
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 function CartItemRow({
@@ -263,18 +265,22 @@ function WishlistItemRow({
 
 // ─── Cart Page ────────────────────────────────────────────────────────────────
 export default function CartPage({
-  cartItems,
-  wishlist,
-  onUpdateQuantity,
-  onRemoveFromCart,
-  onToggleWishlist,
-  onAddToCart,
-  onNavigateToMain,
-}: CartPageProps) {
+                                   cartItems,
+                                   wishlist,
+                                   foods,
+                                   onUpdateQuantity,
+                                   onRemoveFromCart,
+                                   onToggleWishlist,
+                                   onAddToCart,
+                                   onNavigateToMain,
+                                 }: CartPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>('cart');
 
-  const wishlistedFoods = mockFoods.filter((f) => wishlist.has(f.id));
   const cartFoodIds = new Set(cartItems.map((i) => i.food.id));
+
+  const wishlistedFoods = foods.filter((food) =>
+      wishlist.has(food.id)
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16" id="main-content">

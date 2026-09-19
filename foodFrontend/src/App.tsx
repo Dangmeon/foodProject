@@ -7,10 +7,12 @@ import PurposeMenu from './components/PurposeMenu';
 import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 import CartPage, { CartItem } from './pages/CartPage';
-import { Food, mockFoods } from './data/mockFoods';
+import { Food } from './data/mockFoods';
+import FoodDetailPage from './pages/FoodDetailPage';
+import ComparePage from './pages/ComparePage';
 import axios from 'axios';
 
-type Page = 'main' | 'cart';
+type Page = 'main' | 'cart' | 'detail' | 'compare';
 type SortOption = 'default' | 'calories-asc' | 'protein-desc' | 'sugar-asc';
 
 type AuthModalMode = 'login' | 'signup' | null;
@@ -26,6 +28,13 @@ export default function App() {
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   const [page, setPage] = useState<Page>('main');
+
+  const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null);
+
+  const handleFoodClick = (id: number) => {
+    setSelectedFoodId(id);
+    setPage('detail');
+  };
 
   // ── Search & Filters ────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +57,30 @@ export default function App() {
 
 
   const [foods, setFoods] = useState<Food[]>([]); // 진짜 DB 데이터를 담을 바구니
+
+  const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
+
+  const handleToggleCompare = (id: number) => {
+    setCompareIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 3) {
+        next.add(id);
+      }
+
+      return next;
+    });
+  };
+
+  const handleGoToCompare = () => {
+    setPage('compare');
+  };
+
+  const handleChangeTargets = () => {
+    setPage('main');
+  };
 
   useEffect(() => {
     axios.get('http://localhost:8080/api/foods')
@@ -271,7 +304,7 @@ export default function App() {
         default: return a.id - b.id;
       }
     });
-  }, [searchQuery, minProtein, maxSugar, maxCalories, sortBy]);
+  }, [foods, searchQuery, minProtein, maxSugar, maxCalories, sortBy]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -335,28 +368,92 @@ export default function App() {
                 onReset={handleResetFilters}
               />
               <FoodGrid
-                foods={filteredAndSortedFoods}
-                wishlist={wishlist}
-                cartFoodIds={cartFoodIds}
-                onToggleWishlist={handleToggleWishlist}
-                onAddToCart={handleAddToCart}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
+                  foods={filteredAndSortedFoods}
+                  wishlist={wishlist}
+                  cartFoodIds={cartFoodIds}
+
+                  compareIds={compareIds}
+                  onToggleCompare={handleToggleCompare}
+
+                  onToggleWishlist={handleToggleWishlist}
+                  onAddToCart={handleAddToCart}
+
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+
+                  onFoodClick={handleFoodClick}
               />
             </div>
+            {compareIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                  <button
+                      onClick={handleGoToCompare}
+                      disabled={compareIds.size < 2}
+                      className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    선택한 제품 {compareIds.size}개 비교하기
+                  </button>
+                </div>
+            )}
           </>
         )}
 
         {page === 'cart' && (
-          <CartPage
-            cartItems={cartItems}
-            wishlist={wishlist}
-            onUpdateQuantity={handleUpdateQuantity}
-            onRemoveFromCart={handleRemoveFromCart}
-            onToggleWishlist={handleToggleWishlist}
-            onAddToCart={handleAddToCart}
-            onNavigateToMain={() => setPage('main')}
-          />
+            <CartPage
+                cartItems={cartItems}
+                wishlist={wishlist}
+                foods={foods}
+                onUpdateQuantity={handleUpdateQuantity}
+                onRemoveFromCart={handleRemoveFromCart}
+                onToggleWishlist={handleToggleWishlist}
+                onAddToCart={handleAddToCart}
+                onNavigateToMain={() => setPage('main')}
+            />
+        )}
+
+        {page === 'detail' && selectedFoodId !== null && (() => {
+          const food = foods.find((f) => f.id === selectedFoodId);
+
+          if (!food) {
+            return (
+                <div className="p-10 text-center">
+                  식품 정보를 찾을 수 없습니다.
+                  <button
+                      onClick={() => setPage('main')}
+                      className="ml-4"
+                  >
+                    목록으로 돌아가기
+                  </button>
+                </div>
+            );
+          }
+
+          return (
+              <FoodDetailPage
+                  food={food}
+                  isWishlisted={wishlist.has(food.id)}
+                  isInCart={cartFoodIds.has(food.id)}
+                  onToggleWishlist={handleToggleWishlist}
+                  onAddToCart={handleAddToCart}
+                  onBack={() => setPage('main')}
+                  allFoods={foods}
+                  onFoodClick={handleFoodClick}
+              />
+          );
+        })()}
+
+        {page === 'compare' && (
+            <ComparePage
+                foods={foods}
+                compareIds={compareIds}
+                onBack={() => setPage('main')}
+                onChangeTargets={handleChangeTargets}
+                wishlist={wishlist}
+                cartFoodIds={cartFoodIds}
+                onToggleWishlist={handleToggleWishlist}
+                onAddToCart={handleAddToCart}
+                onFoodClick={handleFoodClick}
+            />
         )}
       </main>
 

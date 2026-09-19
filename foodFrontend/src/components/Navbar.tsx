@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-type Page = 'main' | 'cart';
+type Page = 'main' | 'cart' | 'detail' | 'compare';
 
 interface NavbarProps {
   currentPage: Page;
