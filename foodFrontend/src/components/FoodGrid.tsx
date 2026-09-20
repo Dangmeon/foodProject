@@ -1,4 +1,4 @@
-import { Food } from '../data/mockFoods';
+import { Food } from '@/type/mockFoods';
 import FoodCard from './FoodCard';
 
 type SortOption = 'default' | 'calories-asc' | 'protein-desc' | 'sugar-asc';
@@ -14,6 +14,7 @@ interface FoodGridProps {
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
   onFoodClick: (id: number) => void;
+  totalElements: number;
 }
 
 const sortOptions: { value: SortOption; label: string }[] = [
@@ -34,6 +35,7 @@ export default function FoodGrid({
                                    sortBy,
                                    onSortChange,
                                    onFoodClick,
+                                     totalElements,
                                  }: FoodGridProps) {
   return (
       <section aria-label="식품 목록" className="flex-1 min-w-0">
@@ -41,7 +43,7 @@ export default function FoodGrid({
         <div className="flex items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-3">
             <p className="text-sm text-slate-500">
-              <span className="font-semibold text-slate-800">{foods.length}개</span> 검색됨
+              <span className="font-semibold text-slate-800">총 {totalElements.toLocaleString()}개의 상품</span> 검색됨
             </p>
             {compareIds.size > 0 && (
                 <span className="text-[11px] font-semibold px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full">

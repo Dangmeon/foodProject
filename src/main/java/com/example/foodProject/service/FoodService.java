@@ -3,6 +3,8 @@ package com.example.foodProject.service;
 import com.example.foodProject.entity.Product;
 import com.example.foodProject.repository.FoodRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,8 +17,8 @@ public class FoodService {
     private final FoodRepository foodRepository;
 
     @Transactional(readOnly = true)
-    public List<Product> getAllFood(){
-        return foodRepository.findAll();
+    public Page<Product> getAllFood(Pageable pageable){
+        return foodRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
@@ -29,5 +31,10 @@ public class FoodService {
     @Transactional
     public Product createFood(Product product){
         return foodRepository.save(product);
+    }
+
+    @Transactional
+    public Page<Product> searchFood(String keyword, Pageable pageable){
+        return foodRepository.findByFoodNameContaining(keyword, pageable);
     }
 }

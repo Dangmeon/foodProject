@@ -1,11 +1,12 @@
 package com.example.foodProject.repository;
 
 import com.example.foodProject.entity.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 
 public interface FoodRepository extends JpaRepository<Product, Long> {
 
-    List<Product> findByFoodNameContaining(String keyword);
+    Page<Product> findByFoodNameContaining(String keyword, Pageable pageable);
 }

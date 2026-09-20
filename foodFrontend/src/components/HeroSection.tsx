@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { TRENDING_SEARCHES } from '../data/mockFoods';
+import { TRENDING_SEARCHES } from '@/type/mockFoods';
 
 interface HeroSectionProps {
   searchQuery: string;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Food } from '../data/mockFoods';
+import { Food } from '@/type/mockFoods';
 
 interface FoodCardProps {
   food: Food;
