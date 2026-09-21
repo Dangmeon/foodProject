@@ -33,8 +33,16 @@ public class FoodService {
         return foodRepository.save(product);
     }
 
-    @Transactional
-    public Page<Product> searchFood(String keyword, Pageable pageable){
-        return foodRepository.findByFoodNameContaining(keyword, pageable);
+    @Transactional(readOnly = true)
+    public Page<Product> searchFood(String keyword,
+                                    Double minProtein,
+                                    Double maxSugar,
+                                    Double maxCalories,
+                                    Pageable pageable){
+        return foodRepository.findByFoodNameContaining(keyword,
+                minProtein,
+                maxSugar,
+                maxCalories,
+                pageable);
     }
 }

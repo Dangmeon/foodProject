@@ -114,33 +114,63 @@ export default function App() {
   useEffect(() => {
     const fetchFoods = async () => {
       try {
-        let url: string;
+        const params = new URLSearchParams();
 
         if (searchQuery.trim()) {
-          url =
-              `http://localhost:8080/api/foods/search` +
-              `?keyword=${encodeURIComponent(searchQuery)}` +
-              `&page=${currentPage}` +
-              `&size=${pageSize}`;
-        } else {
-          url =
-              `http://localhost:8080/api/foods` +
-              `?page=${currentPage}` +
-              `&size=${pageSize}`;
+          params.append('keyword', searchQuery.trim());
         }
 
-        const response = await axios.get(url);
+        if (minProtein > 0) {
+          params.append('minProtein', String(minProtein));
+        }
+
+        if (maxSugar < 50) {
+          params.append('maxSugar', String(maxSugar));
+        }
+
+        if (maxCalories < 600) {
+          params.append('maxCalories', String(maxCalories));
+        }
+
+        params.append('page', String(currentPage));
+        params.append('size', String(pageSize));
+
+        switch (sortBy) {
+          case 'calories-asc':
+            params.append('sort', 'calories,asc');
+            break;
+
+          case 'protein-desc':
+            params.append('sort', 'protein,desc');
+            break;
+
+          case 'sugar-asc':
+            params.append('sort', 'sugar,asc');
+            break;
+
+          default:
+            break;
+        }
+
+        console.log('sortBy:', sortBy);
+        console.log('params:', params.toString());
+
+        const response = await axios.get(
+            `http://localhost:8080/api/foods/search?${params.toString()}`
+        );
 
         const realData = response.data.content.map((item: any) => ({
           id: item.foodId,
           name: item.foodName,
           brand: item.manufacturer || '제조사 모름',
           category: item.majorCategoryCode || '기타',
+
           calories: item.calories || 0,
           protein: item.protein || 0,
           sugar: item.sugar || 0,
           carbs: item.carbohydrate || 0,
           fat: item.fat || 0,
+
           servingSize: item.servingSize || '1회 제공량',
 
           imageUrl:
@@ -151,17 +181,24 @@ export default function App() {
         }));
 
         setFoods(realData);
-
         setTotalPages(response.data.totalPages);
         setTotalElements(response.data.totalElements);
 
       } catch (error) {
-        console.error('식품 목록 조회 실패:', error);
+        console.error('식품 조회 실패:', error);
       }
     };
 
     fetchFoods();
-  }, [currentPage, searchQuery]);
+
+  }, [
+    currentPage,
+    searchQuery,
+    minProtein,
+    maxSugar,
+    maxCalories,
+    sortBy
+  ]);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('accessToken');
@@ -204,6 +241,7 @@ export default function App() {
     setMaxCalories(600);
     setSortBy('default');
     setActivePurpose(null);
+    setCurrentPage(0);
   };
 
   const handleSelectPurpose = (id: string) => {
@@ -281,39 +319,6 @@ export default function App() {
   // ── Derived state ────────────────────────────────────────────────────────────
   const cartFoodIds = useMemo(() => new Set(cartItems.map((i) => i.food.id)), [cartItems]);
 
-  const filteredAndSortedFoods = useMemo(() => {
-    const filtered = foods.filter((food) => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-
-        const safeName = food.name || '';
-        const safeBrand = food.brand || '';
-        const safeCategory = food.category || '';
-
-        if (
-          !safeName.toLowerCase().includes(q) &&
-          !safeBrand.toLowerCase().includes(q) &&
-          !safeCategory.toLowerCase().includes(q)
-        ) {
-          return false;
-        }
-      }
-      if (food.protein < minProtein) return false;
-      if (food.sugar > maxSugar) return false;
-      if (food.calories > maxCalories) return false;
-      return true;
-    });
-
-    return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'calories-asc': return a.calories - b.calories;
-        case 'protein-desc': return b.protein - a.protein;
-        case 'sugar-asc': return a.sugar - b.sugar;
-        default: return a.id - b.id;
-      }
-    });
-  }, [foods, searchQuery, minProtein, maxSugar, maxCalories, sortBy]);
-
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-full flex flex-col bg-[#F4F8F5]">
@@ -369,18 +374,18 @@ export default function App() {
 
                 <FilterSidebar
                     minProtein={minProtein}
-                    onMinProteinChange={setMinProtein}
+                    onMinProteinChange={(value) => {setMinProtein(value); setCurrentPage(0);}}
                     maxSugar={maxSugar}
-                    onMaxSugarChange={setMaxSugar}
+                    onMaxSugarChange={(value) => {setMaxSugar(value); setCurrentPage(0);}}
                     maxCalories={maxCalories}
-                    onMaxCaloriesChange={setMaxCalories}
+                    onMaxCaloriesChange={(value) => {setMaxCalories(value); setCurrentPage(0);}}
                     onReset={handleResetFilters}
                 />
 
                 <div className="flex-1">
 
                   <FoodGrid
-                      foods={filteredAndSortedFoods}
+                      foods={foods}
                       totalElements={totalElements}
 
                       wishlist={wishlist}
@@ -390,8 +395,12 @@ export default function App() {
                       onToggleWishlist={handleToggleWishlist}
                       onAddToCart={handleAddToCart}
                       sortBy={sortBy}
-                      onSortChange={setSortBy}
+                      onSortChange={(value) => {
+                        setSortBy(value);
+                        setCurrentPage(0);
+                      }}
                       onFoodClick={handleFoodClick}
+
                   />
 
                   <div className="flex justify-center items-center gap-2 mt-8">

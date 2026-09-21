@@ -40,7 +40,16 @@ public class FoodController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Page<Product>> searchFood(@RequestParam String keyword, Pageable pageable) {
-        return ResponseEntity.ok(foodService.searchFood(keyword, pageable));
+    // required는 그 파라미터가 반드시 있어야 하는지를 정하는 옵션 = keyword가 없어도 요청을 허용한다 => (required = false) = 이 쿼리 파라미터는 선택사항이다.
+    public ResponseEntity<Page<Product>> searchFood(@RequestParam(required = false) String keyword,
+                                                    @RequestParam(required = false) Double minProtein,
+                                                    @RequestParam(required = false) Double maxSugar,
+                                                    @RequestParam(required = false) Double maxCalories,
+                                                    Pageable pageable) {
+        return ResponseEntity.ok(foodService.searchFood(keyword,
+                minProtein,
+                maxSugar,
+                maxCalories,
+                pageable));
     }
 }

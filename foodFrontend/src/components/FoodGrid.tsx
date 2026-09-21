@@ -12,7 +12,7 @@ interface FoodGridProps {
   onAddToCart: (food: Food) => void;
   onToggleCompare: (id: number) => void;
   sortBy: SortOption;
-  onSortChange: (sort: SortOption) => void;
+  onSortChange: (value: SortOption) => void;
   onFoodClick: (id: number) => void;
   totalElements: number;
 }
