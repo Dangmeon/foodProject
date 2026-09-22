@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/**").permitAll()
                         // 식품 목록/상세 조회는 비로그인 방문자도 볼 수 있어야 하므로 미리 허용
                         .requestMatchers("/api/foods/**").permitAll()
+                        .requestMatchers("/api/wishlist/**").authenticated()
                         // 그 외 모든 요청(장바구니, 찜, 로그아웃 등)은 토큰 인증 필요
                         .anyRequest().authenticated()
                 )

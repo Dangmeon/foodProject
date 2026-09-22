@@ -11,32 +11,34 @@ import { Food } from '@/type/mockFoods';
 import FoodDetailPage from './pages/FoodDetailPage';
 import ComparePage from './pages/ComparePage';
 import axios from 'axios';
-import {FoodDetail} from "@/type/foodDetail.ts";
+import { FoodDetail } from '@/type/foodDetail.ts';
 
 type Page = 'main' | 'cart' | 'detail' | 'compare';
-type SortOption = 'default' | 'calories-asc' | 'protein-desc' | 'sugar-asc';
+type SortOption =
+    | 'default'
+    | 'calories-asc'
+    | 'protein-desc'
+    | 'sugar-asc';
 
 type AuthModalMode = 'login' | 'signup' | null;
 
 export default function App() {
-
-
-  // ── Auth ─────────────────────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authModal, setAuthModal] = useState<AuthModalMode>(null);
   const [nickname, setNickname] = useState('');
   const [userEmail, setUserEmail] = useState('');
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  // ── Navigation ──────────────────────────────────────────────────────────
   const [page, setPage] = useState<Page>('main');
-
   const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null);
 
-  // ── Search & Filters ────────────────────────────────────────────────────────
+  // ── Search & Filters ────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
+
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('recentSearches');
-    return saved ? JSON.parse(saved) : []; // 저장된 게 있으면 쓰고, 없으면 빈 배열
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [minProtein, setMinProtein] = useState(0);
@@ -44,15 +46,15 @@ export default function App() {
   const [maxCalories, setMaxCalories] = useState(600);
   const [sortBy, setSortBy] = useState<SortOption>('default');
 
-  // ── Purpose quick-filter ────────────────────────────────────────────────────
+  // ── Purpose quick-filter ────────────────────────────────────────────────
   const [activePurpose, setActivePurpose] = useState<string | null>(null);
 
-  // ── Wishlist & Cart ─────────────────────────────────────────────────────────
-  const [wishlist, setWishlist] = useState<Set<number>>(() => new Set([3, 4, 13]));
+  // ── Wishlist & Cart ─────────────────────────────────────────────────────
+  const [wishlist, setWishlist] = useState<Set<number>>(new Set());
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-
-  const [foods, setFoods] = useState<Food[]>([]); // 진짜 DB 데이터를 담을 바구니
+  // ── Food list ───────────────────────────────────────────────────────────
+  const [foods, setFoods] = useState<Food[]>([]);
 
   const [foodDetail, setFoodDetail] = useState<FoodDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -64,53 +66,64 @@ export default function App() {
 
   const pageSize = 15;
 
-  const handleFoodClick = async (id: number) => {
-    setSelectedFoodId(id);
-    setPage('detail');
-
-    setDetailLoading(true);
-    setDetailError(null);
-
-    try {
-      const response = await axios.get<FoodDetail>(
-          `http://localhost:8080/api/foods/${id}`
-      );
-
-      setFoodDetail(response.data);
-
-    } catch (error) {
-      console.error('상세 조회 실패:', error);
-      setDetailError('식품 상세정보를 불러오지 못했습니다.');
-
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
+  // ── Compare ─────────────────────────────────────────────────────────────
   const [compareIds, setCompareIds] = useState<Set<number>>(new Set());
 
-  const handleToggleCompare = (id: number) => {
-    setCompareIds((prev) => {
-      const next = new Set(prev);
+  // ── 새로고침 시 로그인 상태 복원 ──────────────────────────────────────
+  useEffect(() => {
+    const savedToken = localStorage.getItem('accessToken');
+    const savedName = localStorage.getItem('nickname');
+    const savedEmail = localStorage.getItem('userEmail');
 
-      if (next.has(id)) {
-        next.delete(id);
-      } else if (next.size < 3) {
-        next.add(id);
+    if (savedToken && savedName) {
+      setIsLoggedIn(true);
+      setNickname(savedName);
+      setUserEmail(savedEmail || '');
+    }
+  }, []);
+
+  // ── 로그인 상태일 때 찜 목록 조회 ─────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setWishlist(new Set());
+      return;
+    }
+
+    const fetchWishlist = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+
+        if (!token) {
+          setWishlist(new Set());
+          return;
+        }
+
+        const response = await axios.get(
+            'http://localhost:8080/api/wishlist',
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
+
+        const ids = new Set<number>(
+            response.data.map(
+                (item: { foodId: number }) => item.foodId
+            )
+        );
+
+        setWishlist(ids);
+
+      } catch (error) {
+        console.error('찜 목록 조회 실패:', error);
       }
+    };
 
-      return next;
-    });
-  };
+    fetchWishlist();
+  }, [isLoggedIn]);
 
-  const handleGoToCompare = () => {
-    setPage('compare');
-  };
-
-  const handleChangeTargets = () => {
-    setPage('main');
-  };
-
+  // ── 식품 검색 / 필터 / 정렬 / 페이지네이션 ────────────────────────────
   useEffect(() => {
     const fetchFoods = async () => {
       try {
@@ -151,9 +164,6 @@ export default function App() {
           default:
             break;
         }
-
-        console.log('sortBy:', sortBy);
-        console.log('params:', params.toString());
 
         const response = await axios.get(
             `http://localhost:8080/api/foods/search?${params.toString()}`
@@ -197,22 +207,56 @@ export default function App() {
     minProtein,
     maxSugar,
     maxCalories,
-    sortBy
+    sortBy,
   ]);
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem('accessToken');
-    const savedName = localStorage.getItem('nickname');
-    const savedEmail = localStorage.getItem('userEmail');
+  // ── Handlers ────────────────────────────────────────────────────────────
 
-    if(savedToken && savedName){
-      setIsLoggedIn(true);
-      setNickname(savedName);
-      setUserEmail(savedEmail || '');
+  const handleFoodClick = async (id: number) => {
+    setSelectedFoodId(id);
+    setPage('detail');
+
+    setDetailLoading(true);
+    setDetailError(null);
+
+    try {
+      const response = await axios.get<FoodDetail>(
+          `http://localhost:8080/api/foods/${id}`
+      );
+
+      setFoodDetail(response.data);
+
+    } catch (error) {
+      console.error('상세 조회 실패:', error);
+      setDetailError('식품 상세정보를 불러오지 못했습니다.');
+
+    } finally {
+      setDetailLoading(false);
     }
-  }, []);
+  };
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleToggleCompare = (id: number) => {
+    setCompareIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 3) {
+        next.add(id);
+      }
+
+      return next;
+    });
+  };
+
+  const handleGoToCompare = () => {
+    setPage('compare');
+  };
+
+  const handleChangeTargets = () => {
+    setPage('main');
+  };
+
   const handleSearch = (term: string) => {
     const keyword = term.trim();
 
@@ -232,7 +276,9 @@ export default function App() {
   };
 
   const handleRemoveRecentSearch = (term: string) => {
-    setRecentSearches((prev) => prev.filter((t) => t !== term));
+    setRecentSearches((prev) =>
+        prev.filter((t) => t !== term)
+    );
   };
 
   const handleResetFilters = () => {
@@ -249,31 +295,39 @@ export default function App() {
       handleResetFilters();
       return;
     }
+
     setActivePurpose(id);
+
     setMinProtein(0);
     setMaxSugar(50);
     setMaxCalories(600);
     setSortBy('default');
+
     switch (id) {
       case 'fitness':
         setMinProtein(15);
         break;
+
       case 'diet':
         setMaxCalories(300);
         setSortBy('calories-asc');
         break;
+
       case 'sugar':
         setMaxSugar(5);
         setSortBy('sugar-asc');
         break;
+
       case 'protein':
         setMinProtein(20);
         setSortBy('protein-desc');
         break;
+
       case 'clean':
         setMaxSugar(10);
         setMinProtein(5);
         break;
+
       case 'lowfat':
         setMaxCalories(200);
         setSortBy('calories-asc');
@@ -281,253 +335,328 @@ export default function App() {
     }
   };
 
-  const handleToggleWishlist = (id: number) => {
-    setWishlist((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  // ── Wishlist 추가 / 삭제 ────────────────────────────────────────────────
+  const handleToggleWishlist = async (foodId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      if (!token) {
+        setAuthModal('login');
+        return;
+      }
+
+      const isWishlisted = wishlist.has(foodId);
+
+      if (isWishlisted) {
+        await axios.delete(
+            `http://localhost:8080/api/wishlist/${foodId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
+
+        setWishlist((prev) => {
+          const next = new Set(prev);
+          next.delete(foodId);
+          return next;
+        });
+
+      } else {
+        await axios.post(
+            `http://localhost:8080/api/wishlist/${foodId}`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+        );
+
+        setWishlist((prev) => {
+          const next = new Set(prev);
+          next.add(foodId);
+          return next;
+        });
+      }
+
+    } catch (error) {
+      console.error('찜 변경 실패:', error);
+    }
   };
 
   const handleAddToCart = (food: Food) => {
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.food.id === food.id);
+      const existing = prev.find(
+          (item) => item.food.id === food.id
+      );
+
       if (existing) {
         return prev.map((item) =>
-          item.food.id === food.id ? { ...item, quantity: item.quantity + 1 } : item
+            item.food.id === food.id
+                ? { ...item, quantity: item.quantity + 1 }
+                : item
         );
       }
+
       return [...prev, { food, quantity: 1 }];
     });
   };
 
-  const handleUpdateQuantity = (foodId: number, quantity: number) => {
+  const handleUpdateQuantity = (
+      foodId: number,
+      quantity: number
+  ) => {
     if (quantity <= 0) {
-      setCartItems((prev) => prev.filter((item) => item.food.id !== foodId));
+      setCartItems((prev) =>
+          prev.filter((item) => item.food.id !== foodId)
+      );
     } else {
       setCartItems((prev) =>
-        prev.map((item) => (item.food.id === foodId ? { ...item, quantity } : item))
+          prev.map((item) =>
+              item.food.id === foodId
+                  ? { ...item, quantity }
+                  : item
+          )
       );
     }
   };
 
   const handleRemoveFromCart = (foodId: number) => {
-    setCartItems((prev) => prev.filter((item) => item.food.id !== foodId));
+    setCartItems((prev) =>
+        prev.filter((item) => item.food.id !== foodId)
+    );
   };
 
-  // ── Derived state ────────────────────────────────────────────────────────────
-  const cartFoodIds = useMemo(() => new Set(cartItems.map((i) => i.food.id)), [cartItems]);
+  // ── Derived state ───────────────────────────────────────────────────────
+  const cartFoodIds = useMemo(
+      () => new Set(cartItems.map((i) => i.food.id)),
+      [cartItems]
+  );
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-full flex flex-col bg-[#F4F8F5]">
-      <Navbar
-        currentPage={page}
-        onNavigate={setPage}
-        cartCount={cartItems.length}
-        isLoggedIn={isLoggedIn}
-        onLogin={() => setAuthModal('login')}
-        onSignup={() => setAuthModal('signup')}
-        onLogout={() => {
-          setIsLoggedIn(false);
-          setNickname('');
-          setUserEmail('');
+      <div className="min-h-full flex flex-col bg-[#F4F8F5]">
+        <Navbar
+            currentPage={page}
+            onNavigate={setPage}
+            cartCount={cartItems.length}
+            isLoggedIn={isLoggedIn}
+            onLogin={() => setAuthModal('login')}
+            onSignup={() => setAuthModal('signup')}
+            onLogout={() => {
+              setIsLoggedIn(false);
+              setNickname('');
+              setUserEmail('');
+              setWishlist(new Set());
 
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('nickname');
-          localStorage.removeItem('userEmail');
-        }}
-        nickname={nickname}
-        userEmail={userEmail}
-      />
-
-      {authModal && (
-        <AuthModal
-          mode={authModal}
-          onClose={() => setAuthModal(null)}
-          onLoginSuccess={(name) => {
-            setNickname(name);
-            setUserEmail(`${name.toLowerCase()}@nutripick.kr`);
-            setIsLoggedIn(true);
-            setAuthModal(null);
-          }}
-          onSwitchMode={(m) => setAuthModal(m)}
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('nickname');
+              localStorage.removeItem('userEmail');
+            }}
+            nickname={nickname}
+            userEmail={userEmail}
         />
-      )}
 
-      <main className="flex-1" id="main-content">
-        {page === 'main' && (
-            <>
-              <HeroSection
-                  searchQuery={searchQuery}
-                  onSearchChange={setSearchQuery}
-                  onSearch={handleSearch}
-                  recentSearches={recentSearches}
-                  onRemoveRecentSearch={handleRemoveRecentSearch}
-                  onClearRecentSearches={() => setRecentSearches([])}
-              />
+        {authModal && (
+            <AuthModal
+                mode={authModal}
+                onClose={() => setAuthModal(null)}
+                onLoginSuccess={(name) => {
+                  setNickname(name);
+                  setUserEmail(
+                      localStorage.getItem('userEmail') || ''
+                  );
+                  setIsLoggedIn(true);
+                  setAuthModal(null);
+                }}
+                onSwitchMode={(m) => setAuthModal(m)}
+            />
+        )}
 
-              <PurposeMenu activePurpose={activePurpose} onSelect={handleSelectPurpose}/>
-
-              <div className="max-w-7xl mx-auto px-10 pt-4 pb-10 flex gap-10 items-start">
-
-                <FilterSidebar
-                    minProtein={minProtein}
-                    onMinProteinChange={(value) => {setMinProtein(value); setCurrentPage(0);}}
-                    maxSugar={maxSugar}
-                    onMaxSugarChange={(value) => {setMaxSugar(value); setCurrentPage(0);}}
-                    maxCalories={maxCalories}
-                    onMaxCaloriesChange={(value) => {setMaxCalories(value); setCurrentPage(0);}}
-                    onReset={handleResetFilters}
+        <main className="flex-1" id="main-content">
+          {page === 'main' && (
+              <>
+                <HeroSection
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    onSearch={handleSearch}
+                    recentSearches={recentSearches}
+                    onRemoveRecentSearch={handleRemoveRecentSearch}
+                    onClearRecentSearches={() =>
+                        setRecentSearches([])
+                    }
                 />
 
-                <div className="flex-1">
+                <PurposeMenu
+                    activePurpose={activePurpose}
+                    onSelect={handleSelectPurpose}
+                />
 
-                  <FoodGrid
-                      foods={foods}
-                      totalElements={totalElements}
-
-                      wishlist={wishlist}
-                      cartFoodIds={cartFoodIds}
-                      compareIds={compareIds}
-                      onToggleCompare={handleToggleCompare}
-                      onToggleWishlist={handleToggleWishlist}
-                      onAddToCart={handleAddToCart}
-                      sortBy={sortBy}
-                      onSortChange={(value) => {
-                        setSortBy(value);
+                <div className="max-w-7xl mx-auto px-10 pt-4 pb-10 flex gap-10 items-start">
+                  <FilterSidebar
+                      minProtein={minProtein}
+                      onMinProteinChange={(value) => {
+                        setMinProtein(value);
                         setCurrentPage(0);
                       }}
-                      onFoodClick={handleFoodClick}
-
+                      maxSugar={maxSugar}
+                      onMaxSugarChange={(value) => {
+                        setMaxSugar(value);
+                        setCurrentPage(0);
+                      }}
+                      maxCalories={maxCalories}
+                      onMaxCaloriesChange={(value) => {
+                        setMaxCalories(value);
+                        setCurrentPage(0);
+                      }}
+                      onReset={handleResetFilters}
                   />
 
-                  <div className="flex justify-center items-center gap-2 mt-8">
+                  <div className="flex-1">
+                    <FoodGrid
+                        foods={foods}
+                        totalElements={totalElements}
+                        wishlist={wishlist}
+                        cartFoodIds={cartFoodIds}
+                        compareIds={compareIds}
+                        onToggleCompare={handleToggleCompare}
+                        onToggleWishlist={handleToggleWishlist}
+                        onAddToCart={handleAddToCart}
+                        sortBy={sortBy}
+                        onSortChange={(value) => {
+                          setSortBy(value);
+                          setCurrentPage(0);
+                        }}
+                        onFoodClick={handleFoodClick}
+                    />
 
-                    <button
-                        onClick={() =>
-                            setCurrentPage((prev) => Math.max(prev - 1, 0))
-                        }
-                        disabled={currentPage === 0}
-                        className="px-4 py-2 rounded-lg border bg-white disabled:opacity-40"
-                    >
-                      이전
-                    </button>
+                    <div className="flex justify-center items-center gap-2 mt-8">
+                      <button
+                          onClick={() =>
+                              setCurrentPage((prev) =>
+                                  Math.max(prev - 1, 0)
+                              )
+                          }
+                          disabled={currentPage === 0}
+                          className="px-4 py-2 rounded-lg border bg-white disabled:opacity-40"
+                      >
+                        이전
+                      </button>
 
-                    <span className="px-4 text-sm text-gray-600">
-    {currentPage + 1} / {totalPages}
-  </span>
+                      <span className="px-4 text-sm text-gray-600">
+                    {currentPage + 1} / {totalPages}
+                  </span>
 
-                    <button
-                        onClick={() =>
-                            setCurrentPage((prev) =>
-                                Math.min(prev + 1, totalPages - 1)
-                            )
-                        }
-                        disabled={currentPage >= totalPages - 1}
-                        className="px-4 py-2 rounded-lg border bg-white disabled:opacity-40"
-                    >
-                      다음
-                    </button>
-
+                      <button
+                          onClick={() =>
+                              setCurrentPage((prev) =>
+                                  Math.min(
+                                      prev + 1,
+                                      totalPages - 1
+                                  )
+                              )
+                          }
+                          disabled={
+                              currentPage >= totalPages - 1
+                          }
+                          className="px-4 py-2 rounded-lg border bg-white disabled:opacity-40"
+                      >
+                        다음
+                      </button>
+                    </div>
                   </div>
                 </div>
 
+                {compareIds.size > 0 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                      <button
+                          onClick={handleGoToCompare}
+                          disabled={compareIds.size < 2}
+                          className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        선택한 제품 {compareIds.size}개 비교하기
+                      </button>
+                    </div>
+                )}
+              </>
+          )}
+
+          {page === 'cart' && (
+              <CartPage
+                  cartItems={cartItems}
+                  wishlist={wishlist}
+                  foods={foods}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onRemoveFromCart={handleRemoveFromCart}
+                  onToggleWishlist={handleToggleWishlist}
+                  onAddToCart={handleAddToCart}
+                  onNavigateToMain={() => setPage('main')}
+              />
+          )}
+
+          {page === 'detail' && detailLoading && (
+              <div className="p-10 text-center">
+                상세 정보를 불러오는 중입니다...
               </div>
-              {compareIds.size > 0 && (
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-                    <button
-                        onClick={handleGoToCompare}
-                        disabled={compareIds.size < 2}
-                        className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      선택한 제품 {compareIds.size}개 비교하기
-                    </button>
-                  </div>
+          )}
+
+          {page === 'detail' && detailError && (
+              <div className="p-10 text-center">
+                <p className="mb-4">{detailError}</p>
+
+                <button
+                    onClick={() => setPage('main')}
+                    className="px-4 py-2 rounded-lg bg-[#2A7A4B] text-white"
+                >
+                  목록으로 돌아가기
+                </button>
+              </div>
+          )}
+
+          {page === 'detail' &&
+              !detailLoading &&
+              !detailError &&
+              foodDetail && (
+                  <FoodDetailPage
+                      food={foodDetail}
+                      listFood={
+                          foods.find(
+                              (item) =>
+                                  item.id === foodDetail.foodId
+                          ) ?? null
+                      }
+                      isWishlisted={wishlist.has(
+                          foodDetail.foodId
+                      )}
+                      isInCart={cartFoodIds.has(
+                          foodDetail.foodId
+                      )}
+                      onToggleWishlist={handleToggleWishlist}
+                      onAddToCart={handleAddToCart}
+                      onBack={() => setPage('main')}
+                      allFoods={foods}
+                      onFoodClick={handleFoodClick}
+                  />
               )}
-            </>
-        )}
 
-        {page === 'cart' && (
-            <CartPage
-                cartItems={cartItems}
-                wishlist={wishlist}
-                foods={foods}
-                onUpdateQuantity={handleUpdateQuantity}
-                onRemoveFromCart={handleRemoveFromCart}
-                onToggleWishlist={handleToggleWishlist}
-                onAddToCart={handleAddToCart}
-                onNavigateToMain={() => setPage('main')}
-            />
-        )}
+          {page === 'compare' && (
+              <ComparePage
+                  foods={foods}
+                  compareIds={compareIds}
+                  onBack={() => setPage('main')}
+                  onChangeTargets={handleChangeTargets}
+                  wishlist={wishlist}
+                  cartFoodIds={cartFoodIds}
+                  onToggleWishlist={handleToggleWishlist}
+                  onAddToCart={handleAddToCart}
+                  onFoodClick={handleFoodClick}
+              />
+          )}
+        </main>
 
-        {page === 'detail' && detailLoading && (
-            <div className="p-10 text-center">
-              상세 정보를 불러오는 중입니다...
-            </div>
-        )}
-
-        {page === 'detail' && detailError && (
-            <div className="p-10 text-center">
-              <p className="mb-4">{detailError}</p>
-
-              <button
-                  onClick={() => setPage('main')}
-                  className="px-4 py-2 rounded-lg bg-[#2A7A4B] text-white"
-              >
-                목록으로 돌아가기
-              </button>
-            </div>
-        )}
-
-        {page === 'detail' &&
-            !detailLoading &&
-            !detailError &&
-            foodDetail && (
-                <FoodDetailPage
-                    food={foodDetail}
-                    listFood={
-                        foods.find(
-                            (item) =>
-                                item.id ===
-                                foodDetail.foodId,
-                        ) ?? null
-                    }
-                    isWishlisted={wishlist.has(
-                        foodDetail.foodId,
-                    )}
-                    isInCart={cartFoodIds.has(
-                        foodDetail.foodId,
-                    )}
-                    onToggleWishlist={
-                      handleToggleWishlist
-                    }
-                    onAddToCart={handleAddToCart}
-                    onBack={() =>
-                        setPage('main')
-                    }
-                    allFoods={foods}
-                    onFoodClick={handleFoodClick}
-                />
-            )}
-
-        {page === 'compare' && (
-            <ComparePage
-                foods={foods}
-                compareIds={compareIds}
-                onBack={() => setPage('main')}
-                onChangeTargets={handleChangeTargets}
-                wishlist={wishlist}
-                cartFoodIds={cartFoodIds}
-                onToggleWishlist={handleToggleWishlist}
-                onAddToCart={handleAddToCart}
-                onFoodClick={handleFoodClick}
-            />
-        )}
-      </main>
-
-      <Footer />
-    </div>
+        <Footer />
+      </div>
   );
 }

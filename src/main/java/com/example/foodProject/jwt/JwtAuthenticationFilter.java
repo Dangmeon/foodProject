@@ -29,6 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 1. Request Header에서 "Bearer 토큰" 추출
         String token = resolveToken(request);
 
+        System.out.println("token = " + token);
+        System.out.println("valid = " + (token != null && jwtProvider.validateToken(token)));
+
         // 2. 토큰 유효성 검증
         if (token != null && jwtProvider.validateToken(token)) {
 
@@ -39,6 +42,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 토큰에서 유저 식별값(Email)과 권한 정보 추출
                 String email = jwtProvider.getEmail(token);
                 String role = jwtProvider.getRole(token); // e.g. "USER"
+
+                System.out.println("email = " + email);
+                System.out.println("role = " + role);
+
 
                 // 스프링 시큐리티 인증 객체(Authentication) 생성
                 UsernamePasswordAuthenticationToken authentication =
@@ -52,6 +59,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
+        System.out.println(
+                "authentication = " +
+                        SecurityContextHolder.getContext().getAuthentication()
+        );
 
         filterChain.doFilter(request, response);
     }
